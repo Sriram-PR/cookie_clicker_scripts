@@ -3,16 +3,18 @@
 
 ; --- Coordinates ---
 coords := Map(
-    "noResearch", { buyX: 2630, buyY: 290, sellX: 2630, sellY: 320, buildX: 2630, buildY: 660, toggleX: 2990, toggleY: 310 },
-    "withResearch", { buyX: 2630, buyY: 440, sellX: 2630, sellY: 470, buildX: 2630, buildY: 810, toggleX: 2990, toggleY: 460 }
+    "noResearch",  { buyX: 2630, buyY: 290, sellX: 2630, sellY: 320, buildX: 2630, buildY: 660, toggleX: 2990, toggleY: 310 },
+    "withResearch",{ buyX: 2630, buyY: 440, sellX: 2630, sellY: 470, buildX: 2630, buildY: 810, toggleX: 2990, toggleY: 460 }
 )
 mainClickX := 480
 mainClickY := 740
 
 ; --- Timings (ms) ---
-clickInterval := 10      ; cookie click interval
-gapInterval := 100       ; gap between actions
-clickDuration := 10000   ; cookie clicking duration (10s)
+clickInterval := 10       ; cookie click interval
+gapInterval := 50        ; gap between actions
+clickDuration := 10050    ; cookie clicking duration (10s)
+toggleDelay := 25         ; small delay between toggle click and build click
+tooltipDuration := 1000    ; how long tooltips stay visible (ms)
 
 ; --- State ---
 running := false
@@ -30,16 +32,20 @@ ToggleLoop(selectedMode)
     mode := selectedMode
 
     if running {
-        Tooltip("Loop Started: " . mode)
+        ShowTip("Loop Started: " . mode, 1000)
         StartCycle()
     } else {
-        Tooltip("Loop Stopped")
+        ShowTip("Loop Stopped", 1000)
         EmergencyStop()
     }
-    SetTimer(ClearTooltip, -1000)
 }
 
-ClearTooltip() => Tooltip()
+; --- Tooltip helper ---
+ShowTip(text, duration := 800)
+{
+    Tooltip(text)
+    SetTimer(() => Tooltip(), -duration)
+}
 
 ; --- Emergency stop ---
 EmergencyStop()
@@ -54,6 +60,16 @@ EmergencyStop()
     SetTimer(MainClicker, 0)
 }
 
+; --- Toggle + Build helper ---
+ToggleAndBuild(mode)
+{
+    global coords, gapInterval, toggleDelay
+    Click(coords[mode].toggleX, coords[mode].toggleY)
+    Sleep(toggleDelay)
+    Click(coords[mode].buildX, coords[mode].buildY)
+    Sleep(gapInterval)
+}
+
 ; --- One cycle ---
 StartCycle()
 {
@@ -62,20 +78,17 @@ StartCycle()
     if !running
         return
 
-    ; Sell (normal click)
-    Tooltip("Selling...")
+    ; Sell
+    ShowTip("Selling...")
     Click(coords[mode].sellX, coords[mode].sellY)
     Sleep(gapInterval)
 
-    ; Pre-Build (toggle click then build)
-    Tooltip("Pre-Build...")
-    Click(coords[mode].toggleX, coords[mode].toggleY)
-    Sleep(30) ; tiny pause to ensure the toggle click registers
-    Click(coords[mode].buildX, coords[mode].buildY)
-    Sleep(gapInterval)
+    ; Pre-Build
+    ShowTip("Pre-Build...")
+    ToggleAndBuild(mode)
 
     ; Cookie clicking
-    Tooltip("Main clicking...")
+    ShowTip("Main clicking...")
     StartClicking()
 
     ; Schedule stop and buy/build
@@ -91,19 +104,14 @@ BuyAndBuild()
     if !running
         return
 
-    ; Buy (normal click)
-    Tooltip("Buying...")
+    ; Buy
+    ShowTip("Buying...")
     Click(coords[mode].buyX, coords[mode].buyY)
     Sleep(gapInterval)
 
-    ; Post-Build (toggle click then build)
-    Tooltip("Post-Build...")
-    Click(coords[mode].toggleX, coords[mode].toggleY)
-    Sleep(30)
-    Click(coords[mode].buildX, coords[mode].buildY)
-    Sleep(gapInterval)
-
-    SetTimer(ClearTooltip, -800)
+    ; Post-Build
+    ShowTip("Post-Build...")
+    ToggleAndBuild(mode)
 
     if running
         SetTimer(StartCycle, -gapInterval)
