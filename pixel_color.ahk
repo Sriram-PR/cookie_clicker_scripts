@@ -3,7 +3,7 @@
 
 ; --- Default coordinates ---
 coordX := 2710
-coordY := 790
+coordY := 640
 
 ; F1: Show pixel color at the coordinates
 F1::
