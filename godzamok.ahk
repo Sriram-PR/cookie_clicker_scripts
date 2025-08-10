@@ -12,7 +12,7 @@ mainClickY := 740
 ; --- Timings (ms) ---
 clickInterval := 10       ; cookie click interval
 gapInterval := 50        ; gap between actions
-clickDuration := 10050    ; cookie clicking duration (10s)
+clickDuration := 5250 + 50   ; cookie clicking duration (10s)
 toggleDelay := 25         ; small delay between toggle click and build click
 tooltipDuration := 1000    ; how long tooltips stay visible (ms)
 
@@ -93,30 +93,50 @@ ToggleAndBuild(mode)
     Sleep(gapInterval)
 }
 
-; --- One cycle ---
+; --- Config ---
+buffCycles := 19  ; number of sell/build/buy/build loops before main click
+
+; --- Main cycle with buff stacking ---
 StartCycle()
 {
-    global running, coords, mode, gapInterval, clickDuration
+    global running, coords, mode, gapInterval, clickDuration, buffCycles
 
     if !running
         return
 
-    ; Sell
-    ShowTip("Selling...")
-    Click(coords[mode].sellX, coords[mode].sellY)
-    Sleep(gapInterval)
+    ; --- Buff stacking phase ---
+    Loop buffCycles
+    {
+        ShowTip("Buff cycle " . A_Index . " / " . buffCycles)
 
-    ; Pre-Build
-    ShowTip("Pre-Build...")
-    ToggleAndBuild(mode)
+        ; Sell
+        Click(coords[mode].sellX, coords[mode].sellY)
+        Sleep(gapInterval)
 
-    ; Cookie clicking
+        ; Pre-Build
+        Click(coords[mode].toggleX, coords[mode].toggleY)
+        Sleep(25) ; toggleDelay
+        Click(coords[mode].buildX, coords[mode].buildY)
+        Sleep(gapInterval)
+
+        ; Buy
+        Click(coords[mode].buyX, coords[mode].buyY)
+        Sleep(gapInterval)
+
+        ; Post-Build
+        Click(coords[mode].toggleX, coords[mode].toggleY)
+        Sleep(25)
+        Click(coords[mode].buildX, coords[mode].buildY)
+        Sleep(gapInterval)
+    }
+
+    ; --- Main click phase ---
     ShowTip("Main clicking...")
     StartClicking()
 
-    ; Schedule stop and buy/build
+    ; Schedule stop and restart cycle
     SetTimer(StopClicking, -clickDuration)
-    SetTimer(BuyAndBuild, -clickDuration)
+    SetTimer(StartCycle, -clickDuration)
 }
 
 ; --- Buy + Build ---
