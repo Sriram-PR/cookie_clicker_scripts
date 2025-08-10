@@ -25,16 +25,39 @@ mode := "" ; "noResearch" or "withResearch"
 F2::ToggleLoop("noResearch")
 F3::ToggleLoop("withResearch")
 
+lastToggle := 0
+minRunTime := 1000  ; minimum time (ms) the loop must run before stopping allowed
+startTime := 0
+
 ToggleLoop(selectedMode)
 {
-    global running, mode
-    running := !running
-    mode := selectedMode
+    static debounce := 300  ; ms between toggles allowed
+    global running, mode, lastToggle, startTime, minRunTime
 
-    if running {
+    currentTime := A_TickCount
+
+    ; Ignore toggles that happen too fast after the previous one (debounce)
+    if (currentTime - lastToggle < debounce)
+        return
+
+    lastToggle := currentTime
+
+    if !running
+    {
+        ; Start the loop
+        running := true
+        mode := selectedMode
+        startTime := currentTime
         ShowTip("Loop Started: " . mode, 1000)
         StartCycle()
-    } else {
+    }
+    else
+    {
+        ; If minimum runtime not elapsed, ignore stop
+        if (currentTime - startTime < minRunTime)
+            return
+
+        running := false
         ShowTip("Loop Stopped", 1000)
         EmergencyStop()
     }
