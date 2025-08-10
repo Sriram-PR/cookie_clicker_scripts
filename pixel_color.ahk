@@ -1,17 +1,25 @@
 ﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 
-; --- Default coordinates ---
-coordX := 2710
-coordY := 640
+running := false
 
-; F1: Show pixel color at the coordinates
-F1::
+F1::  ; Toggle start/stop
 {
-    global coordX, coordY
+    global running
+    running := !running
 
-    color := PixelGetColor(coordX, coordY, "RGB")
-    hexColor := Format("{:06X}", color & 0xFFFFFF) ; convert to hex string
+    if running {
+        SetTimer(ShowCursorPixelColor, 50) ; update every 50 ms
+    } else {
+        SetTimer(ShowCursorPixelColor, 0)
+        Tooltip() ; clear tooltip
+    }
+}
 
-    MsgBox("Pixel color at (" coordX ", " coordY ") = #" hexColor, "Pixel Color")
+ShowCursorPixelColor()
+{
+    MouseGetPos &mx, &my
+    color := PixelGetColor(mx, my, "RGB")
+    hexColor := Format("{:06X}", color & 0xFFFFFF)
+    Tooltip("Pos: (" mx ", " my ") | Color: #" hexColor)
 }
