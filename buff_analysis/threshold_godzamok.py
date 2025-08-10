@@ -93,4 +93,4 @@ fig.suptitle("Buff stacking: Final Cookies, Clicks, and Buff %")
 ax1.legend(loc="upper left")
 ax2.legend(loc="upper right")
 
-plt.savefig("buff_cycles.png", dpi=400, bbox_inches="tight")
+plt.savefig("output/buff_cycles.png", dpi=400, bbox_inches="tight")

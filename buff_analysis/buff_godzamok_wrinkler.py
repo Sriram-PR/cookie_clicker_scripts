@@ -60,7 +60,7 @@ for wrinklers in range(max_wrinklers + 1):
 
 # --- Save CSV ---
 df = pd.DataFrame(rows)
-df.to_csv("godzamok_v_wrinkler_heatmap.csv", index=False)
+df.to_csv("output/godzamok_v_wrinkler_heatmap.csv", index=False)
 
 # --- Print best combos ---
 for wrinklers in range(max_wrinklers + 1):
@@ -82,4 +82,4 @@ plt.xlabel("Buff Cycles")
 plt.ylabel("Number of Wrinklers")
 plt.title("Final Cookies for Wrinkler & Buff Cycle Combinations")
 plt.tight_layout()
-plt.savefig("godzamok_v_wrinkler_heatmap.png", dpi=400)
+plt.savefig("output/godzamok_v_wrinkler_heatmap.png", dpi=400)

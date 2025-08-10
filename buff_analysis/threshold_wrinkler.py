@@ -75,4 +75,4 @@ plt.legend()
 plt.grid(True, linestyle="--", alpha=0.6)
 
 plt.tight_layout()
-plt.savefig("buff_wrinklers.png", dpi=400)
+plt.savefig("output/buff_wrinklers.png", dpi=400)
