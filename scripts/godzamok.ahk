@@ -1,62 +1,68 @@
 ﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 
-; --- Coordinates ---
-coords := Map(
-    "noResearch",  { buyX: 2630, buyY: 290, sellX: 2630, sellY: 320, buildX: 2630, buildY: 660, toggleX: 2990, toggleY: 310 },
-    "withResearch",{ buyX: 2630, buyY: 440, sellX: 2630, sellY: 470, buildX: 2630, buildY: 810, toggleX: 2990, toggleY: 460 }
-)
+coords := {
+    buyX: 2630, buyY: 490,
+    sellX: 2630, sellY: 520,
+    builds: [
+        { x: 2630, y: 860 },
+        { x: 2630, y: 980 },
+        { x: 2630, y: 1100 },
+        { x: 2630, y: 1220 }
+    ]
+}
 mainClickX := 480
 mainClickY := 740
 
 ; --- Timings (ms) ---
-clickInterval := 10       ; cookie click interval
-gapInterval := 50        ; gap between actions
-clickDuration := 5250 + 50   ; cookie clicking duration (10s)
-toggleDelay := 25         ; small delay between toggle click and build click
-tooltipDuration := 1000    ; how long tooltips stay visible (ms)
+clickInterval := 10          ; cookie click interval
+gapInterval := 50            ; gap between actions
+cycleRepeats := 5            ; how many times to repeat sell → 4 builds → buy → 4 builds
+clickDuration := 7500        ; main clicking duration so full loop = 10s
+loopDuration := 7600        ; total loop length (ms)
+tooltipDuration := 1000      ; tooltip visibility time (ms)
 
 ; --- State ---
 running := false
 isClicking := false
-mode := "" ; "noResearch" or "withResearch"
+inCyclePhase := false
 
-; --- Hotkeys to start/stop ---
-F2::ToggleLoop("noResearch")
-F3::ToggleLoop("withResearch")
+; --- Hotkey ---
+F3::ToggleLoop()
 
 lastToggle := 0
-minRunTime := 1000  ; minimum time (ms) the loop must run before stopping allowed
+minRunTime := 1000  ; minimum ms before allowing stop
 startTime := 0
 
-ToggleLoop(selectedMode)
+ToggleLoop()
 {
-    static debounce := 300  ; ms between toggles allowed
-    global running, mode, lastToggle, startTime, minRunTime
+    static debounce := 300
+    global running, lastToggle, startTime, minRunTime, inCyclePhase
 
     currentTime := A_TickCount
 
-    ; Ignore toggles that happen too fast after the previous one (debounce)
     if (currentTime - lastToggle < debounce)
         return
-
     lastToggle := currentTime
+
+    ; Prevent stop/start during critical phase
+    if inCyclePhase
+    {
+        ShowTip("Busy: Wait until build/sell/buy phase ends", 1000)
+        return
+    }
 
     if !running
     {
-        ; Start the loop
         running := true
-        mode := selectedMode
         startTime := currentTime
-        ShowTip("Loop Started: " . mode, 1000)
+        ShowTip("Loop Started", 1000)
         StartCycle()
     }
     else
     {
-        ; If minimum runtime not elapsed, ignore stop
         if (currentTime - startTime < minRunTime)
             return
-
         running := false
         ShowTip("Loop Stopped", 1000)
         EmergencyStop()
@@ -76,88 +82,56 @@ EmergencyStop()
     global running
     running := false
     StopClicking()
-    ; clear timers
     SetTimer(StartCycle, 0)
     SetTimer(StopClicking, 0)
-    SetTimer(BuyAndBuild, 0)
     SetTimer(MainClicker, 0)
 }
 
-; --- Toggle + Build helper ---
-ToggleAndBuild(mode)
-{
-    global coords, gapInterval, toggleDelay
-    Click(coords[mode].toggleX, coords[mode].toggleY)
-    Sleep(toggleDelay)
-    Click(coords[mode].buildX, coords[mode].buildY)
-    Sleep(gapInterval)
-}
-
-; --- Config ---
-buffCycles := 19  ; number of sell/build/buy/build loops before main click
-
-; --- Main cycle with buff stacking ---
+; --- Main cycle ---
 StartCycle()
 {
-    global running, coords, mode, gapInterval, clickDuration, buffCycles
+    global running, coords, gapInterval, clickDuration, cycleRepeats, loopDuration, inCyclePhase
 
     if !running
         return
 
-    ; --- Buff stacking phase ---
-    Loop buffCycles
+    inCyclePhase := true   ; lock here
+
+    Loop cycleRepeats
     {
-        ShowTip("Buff cycle " . A_Index . " / " . buffCycles)
+        ShowTip("Cycle " . A_Index . " / " . cycleRepeats)
 
         ; Sell
-        Click(coords[mode].sellX, coords[mode].sellY)
+        Click(coords.sellX, coords.sellY)
         Sleep(gapInterval)
 
-        ; Pre-Build
-        Click(coords[mode].toggleX, coords[mode].toggleY)
-        Sleep(25) ; toggleDelay
-        Click(coords[mode].buildX, coords[mode].buildY)
-        Sleep(gapInterval)
+        ; 4 Builds
+        For build in coords.builds
+        {
+            Click(build.x, build.y)
+            Sleep(gapInterval)
+        }
 
         ; Buy
-        Click(coords[mode].buyX, coords[mode].buyY)
+        Click(coords.buyX, coords.buyY)
         Sleep(gapInterval)
 
-        ; Post-Build
-        Click(coords[mode].toggleX, coords[mode].toggleY)
-        Sleep(25)
-        Click(coords[mode].buildX, coords[mode].buildY)
-        Sleep(gapInterval)
+        ; 4 Builds again
+        For build in coords.builds
+        {
+            Click(build.x, build.y)
+            Sleep(gapInterval)
+        }
     }
 
-    ; --- Main click phase ---
+    inCyclePhase := false  ; unlock before clicking starts
+
+    ; Main clicking phase
     ShowTip("Main clicking...")
     StartClicking()
 
-    ; Schedule stop and restart cycle
     SetTimer(StopClicking, -clickDuration)
-    SetTimer(StartCycle, -clickDuration)
-}
-
-; --- Buy + Build ---
-BuyAndBuild()
-{
-    global running, coords, mode, gapInterval
-
-    if !running
-        return
-
-    ; Buy
-    ShowTip("Buying...")
-    Click(coords[mode].buyX, coords[mode].buyY)
-    Sleep(gapInterval)
-
-    ; Post-Build
-    ShowTip("Post-Build...")
-    ToggleAndBuild(mode)
-
-    if running
-        SetTimer(StartCycle, -gapInterval)
+    SetTimer(StartCycle, -loopDuration)
 }
 
 ; --- Continuous click ---
